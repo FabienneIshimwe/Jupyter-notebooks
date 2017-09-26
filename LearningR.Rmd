@@ -50,7 +50,18 @@
 ```
 
 ```{r}
+#DataFrames
+mtcars #built it dataframe
 
+head(mtcars) # preview of the data, first 6 rows
+nrow(mtcars) # number of rows
+ncol(mtcars) #number of columns
+
+mtcars[1]
+mtcars[c("mpg", "hp")] # two columns
+mtcars[c(3, 24),]  # two rows
+mtcars["Camaro Z28",]  # row by its name
+mtcars[[3]][mtcars$am == 0]
 
 ```
 
