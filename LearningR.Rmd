@@ -64,5 +64,40 @@ mtcars["Camaro Z28",]  # row by its name
 mtcars[[3]][mtcars$am == 0]
 
 ```
+```{r}
+#Stats with R
+
+#1.QUALITATIVE DATA
+
+# Data used : painters built in dataframe
+library(MASS)
+
+help(painters)
+head(painters)
+ 
+summary(painters) #sumamry of dataframe
+
+str(painters) # structure of dataframe
+
+
+```
+
+```{r}
+school = painters$School      # the painter schools 
+school.freq = table(school)   # applying the table function to get the distribution
+cbind(school.freq)    # applying the cbind function so the results can be in acolumn format
+
+school.relfreq = (school.freq / nrow(painters))*100  # getting the relative fre qency distribution
+
+cbind(school.relfreq)
+
+
+```
+
+```{r}
+#BAR PLOT with colors
+colors = c("red", "yellow", "green", "violet",  "orange", "blue", "pink", "cyan") 
+barplot(school.freq, col=colors)
+```
 
 
