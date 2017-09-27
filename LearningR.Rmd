@@ -95,7 +95,7 @@ cbind(school.relfreq)
 ```
 
 ```{r}
-#BAR PLOT with colors
+#BARPLOT with colors
 colors = c("red", "yellow", "green", "violet",  "orange", "blue", "pink", "cyan") 
 barplot(school.freq, col=colors)
 ```
