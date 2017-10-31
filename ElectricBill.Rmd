@@ -1,0 +1,132 @@
+---
+title: "Electric Bill Data"
+author: "Fabienne ISHIMWE"
+date: "October 30, 2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+# 1. Loading packages
+#==================================
+#library(corrplot) 
+#install.packages('visreg')
+#library(visreg) 
+#install.packages('rgl')
+#library(rgl)
+#library(scatterplot3d)
+#install.packages('caTools')
+#library(caTools)
+```
+
+
+
+
+
+
+
+```{r cars}
+#2. Overview of Data
+#========================================
+df=read.csv(file="data.csv", header=TRUE)
+
+head(df)
+str(df)
+df$ElectricBill[df$ElectricBill==0]=mean(df$ElectricBill)
+```
+
+```{r}
+
+# Overview of correlation between variables
+
+
+library(ggplot2)
+ggplot(data=melt(cor(df)), aes(Var2, Var1, fill = value))+
+ geom_tile(color = "white")+
+ scale_fill_gradient2(low = "purple", high = "brown", mid = "white", 
+   midpoint = 0, limit = c(-1,1), space = "Lab", 
+   name="Electric Bill variables correlation") +
+  theme_minimal()+ 
+ theme(axis.text.x = element_text(angle = 50, vjust = 1, 
+    size = 10, hjust = 1))+
+ coord_fixed()
+```
+
+
+
+```{r}
+#3. Hypothesis testing
+# HO: There is no linear relationship between Electric bill and Num of people at home
+#HA: There is a linear relationship between Electric bill and Num of people at home
+regressor1=lm(formula=ElectricBill~NumOfPeopleHome,data=df)
+plot(df$NumOfPeopleHome, df$ElectricBill, col="red")
+summary(regressor1)
+
+# No linear correlation, Adjust R squared so close to Zero.
+```
+
+
+
+```{r}
+
+# 3. Bulding a multiple regression full model
+ 
+set.seed(122)
+split= sample.split(df$ElectricBill,SplitRatio=0.8)
+train=subset(df,split==TRUE)
+test=subset(df,split==FALSE)
+
+# Fitting a multiple linear regression to the training data
+regressor=lm(formula=ElectricBill~.,data=df)
+
+
+# Predicting the test data results
+PredictedBill=predict(regressor, newdata=test)
+
+TestBill=test$ElectricBill
+compar=data.frame(TestBill,PredictedBill)
+compar
+
+ plot(TestBill, PredictedBill, xlab=" Actual Bill(test)",ylab="Predicted Bill(By model)",col="red")
+ abline(lm(TestBill ~ PredictedBill),col="blue")
+```
+
+```{r}
+# 3. Bulding a multiple regression model( Backward elimination)
+
+#1. All variables
+regressor2=lm(formula=ElectricBill~ConsumptionTotal+Temperature+Heating+Cooling+NumOfPeopleHome+NewMeter+NewheatPump1+NewHeatPump2+RiderTotal,data=df)
+
+summary(regressor2)
+
+```
+
+```{r}
+# Minus variable with highest P value : Cooling and Heating
+regressor2=lm(formula=ElectricBill~+Temperature+NewMeter+ConsumptionTotal+NumOfPeopleHome+NewheatPump1+NewHeatPump2+RiderTotal,data=df)
+summary(regressor2)
+
+# Minus variable with highest P value : NumOfPeopleHome
+regressorfinal=lm(formula=ElectricBill~+ConsumptionTotal+Temperature+NewMeter+NewheatPump1+NewHeatPump2+RiderTotal,data=df)
+
+summary(regressorfinal)
+
+
+```
+
+```{r}
+# Predicting the test data results
+PredictedBill=predict(regressorfinal, newdata=test)
+
+TestBill=test$ElectricBill
+comparfinal=data.frame(TestBill,PredictedBill)
+comparfinal
+
+ plot(TestBill, PredictedBill, xlab=" Actual Bill(test)",ylab="Predicted Bill(By model)",col="red")
+ abline(lm(TestBill ~ PredictedBill),col="blue")
+```
+
+
