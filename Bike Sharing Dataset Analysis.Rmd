@@ -24,10 +24,10 @@ The  dataset contains the hourly and daily count of rental bikes between years 2
 4. What days of the week are less rides taken?
 5. What is the average time of duration of the trip?
 6. How does the weather affect the number of rides taken?
-7. whats the ration of casual to registered riders?
-8. On what do we see the most casual riders?
+7. what is the ratio of casual to registered riders?
+8. On what day do we see the most casual riders?
 9. Which variables are highly correlated with the total count of bike rentals/ Creating the best fit model
-10. Can we make some decent predicts based on the model given certain variables?
+10. Can we make some decent predictions based on the model given certain variables?
 11. What are the  conclusions?
 
 
