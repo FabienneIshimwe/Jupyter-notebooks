@@ -9,14 +9,14 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Dataset Description: 
-##======================
+## Dataset Description
+
 The  dataset contains the hourly and daily count of rental bikes between years 2011 and 2012 in Capital bikeshare system with the corresponding weather and seasonal information. It was provided  on 2013-12-20 by Capital Bikeshare , a bicycle sharing system that serves Washington, D.C.
 
 
 
 ## Questions to Explore
-##=======================
+
 
 1. What hours of the day are most rides taken?
 2. What hours of the day are most less rides taken?
@@ -33,10 +33,11 @@ The  dataset contains the hourly and daily count of rental bikes between years 2
 
 
 ## Research question/Hypothesis
-##=================================
 
 Response variable : Rental Count(cnt)
+
 H0:Rental count will not decrease during cold weather
+
 HA:Rental count will decrease during cold weather
 ```{r}
 # Column names
