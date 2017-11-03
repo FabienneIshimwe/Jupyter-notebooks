@@ -1,0 +1,61 @@
+---
+title: "Bike Sharing Analysis"
+author: "Fabienne ishimwe"
+date: "11/2/2017"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Dataset Description: 
+##======================
+The  dataset contains the hourly and daily count of rental bikes between years 2011 and 2012 in Capital bikeshare system with the corresponding weather and seasonal information. It was provided  on 2013-12-20 by Capital Bikeshare , a bicycle sharing system that serves Washington, D.C.
+
+
+
+## Questions to Explore
+##=======================
+
+1. What hours of the day are most rides taken?
+2. What hours of the day are most less rides taken?
+3. What days of the week are most rides taken?
+4. What days of the week are less rides taken?
+5. What is the average time of duration of the trip?
+6. How does the weather affect the number of rides taken?
+7. whats the ration of casual to registered riders?
+8. On what do we see the most casual riders?
+9. Which variables are highly correlated with the total count of bike rentals/ Creating the best fit model
+10. Can we make some decent predicts based on the model given certain variables?
+11. What are the  conclusions?
+
+
+
+## Research question/Hypothesis
+#=================================
+Response variable : Rental Count(cnt)
+H0:Rental count will not decrease during cold weather
+HA:Rental count will decrease during cold weather
+```{r}
+# Column names
+colnames(df)
+```
+
+
+```{r}
+# Importing the dataset and viewing structure
+df=read.csv(file="hour.csv", header=TRUE)
+str(df)
+
+```
+
+```{r}
+# Getting some statistics on the data
+summary(df)
+```
+
+```{r}
+#To be continued...
+```
+
