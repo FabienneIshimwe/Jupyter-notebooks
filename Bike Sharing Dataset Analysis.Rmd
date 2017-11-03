@@ -33,7 +33,8 @@ The  dataset contains the hourly and daily count of rental bikes between years 2
 
 
 ## Research question/Hypothesis
-#=================================
+##=================================
+
 Response variable : Rental Count(cnt)
 H0:Rental count will not decrease during cold weather
 HA:Rental count will decrease during cold weather
