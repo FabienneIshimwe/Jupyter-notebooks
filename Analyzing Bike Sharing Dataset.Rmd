@@ -1,0 +1,333 @@
+---
+title: "Analyzing Bike sharing dataset"
+author: "Fabienne ISHIMWE"
+date: "November 20, 2017"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#====================
+Dataset Description
+#====================
+
+The  dataset contains the hourly and daily count of rental bikes between years 2011 and 2012 in Capital bikeshare system with the corresponding weather and seasonal information. It was provided  on 2013-12-20 by Capital Bikeshare , a bicycle sharing system that serves Washington, D.C.
+
+================================================================================
+Attribute Information
+================================================================================
+
+Both hour.csv and day.csv have the following fields, except hr which is not available in day.csv
+
+- instant: record index
+- dteday : date
+- season : season (1:springer, 2:summer, 3:fall, 4:winter)
+- yr : year (0: 2011, 1:2012)
+- mnth : month ( 1 to 12)
+- holiday : weather day is holiday or not (extracted from [Web Link])
+- weekday : day of the week
+- workingday : if day is neither weekend nor holiday is 1, otherwise is 0.
++ weathersit : 
+- 1: Clear, Few clouds, Partly cloudy, Partly cloudy
+- 2: Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist
+- 3: Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds
+- 4: Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog
+- temp : Normalized temperature in Celsius. The values are derived via (t-t_min)/(t_max-t_min), t_min=-8, t_max=+39 (only in hourly scale)
+- atemp: Normalized feeling temperature in Celsius. The values are derived via (t-t_min)/(t_max-t_min), t_min=-16, t_max=+50 (only in hourly scale)
+- hum: Normalized humidity. The values are divided to 100 (max)
+- windspeed: Normalized wind speed. The values are divided to 67 (max)
+- casual: count of casual users
+- registered: count of registered users
+- cnt: count of total rental bikes including both casual and registered
+
+===================================================================================
+Questions to Explore
+===================================================================================
+1. when do we see the most casual riders? work days or weekends and holidays?
+2. What days of the week were most rides taken?
+3. During what seasons were most rides taken
+4. During what weather conditions  were less rides taken and what was the average count during the season
+5. Is there a corellation between holiday and total rental bikes
+6. How does the weather affect the number of rides taken?
+7. How does the temp affect the number of rides taken
+8. Which variables are highly correlated with the total count of bike rentals/ Creating the best fit model
+9. Can we make some decent predictions based on the model given the variables?
+10. What are the  conclusions?
+
+
+#====================================================================
+Research question/Hypothesis
+======================================================================
+Response variable : Rental Count(cnt)
+
+H0:Rental count will not decrease during low temperatures
+
+HA:Rental count will decrease during low temperatures
+
+
+
+```{r}
+# Setting global options
+options("scipen" = 10)
+options()$scipen
+
+# Loading libraries
+install.packages('dplyr')
+library('dplyr')
+library(reshape2)
+library(ggplot2)
+```
+
+
+
+```{r}
+
+# Importing the dataset and viewing structure
+day=read.csv(file="day.csv", header=TRUE)
+str(day)
+```
+
+
+#============================================
+1. Data preprocessing
+============================================
+
+#1.1 Checking for null values
+
+```{r}
+is.null(day)
+```
+#1.2 Adding new columns to facilitate analysis and the creation of better model
+
+#Season
+```{r}
+
+day['season_new']=NA
+
+day[day$season==1,]$season_new='spring'
+day[day$season==2,]$season_new='summer'
+day[day$season==3,]$season_new='fall'
+day[day$season==4,]$season_new='winter'
+
+day$season_new=factor(day$season_new)
+
+```
+
+#yr: year
+```{r}
+
+day['yr_new']=NA
+
+day[day$yr==1,]$yr_new='2012'
+day[day$yr==0,]$yr_new='2011'
+
+day$yr_new=factor(day$yr_new)
+```
+
+#workingday
+```{r}
+day['workingday_new']=NA
+
+day[day$workingday==1,]$workingday_new='Regular Day'
+day[day$workingday==0,]$workingday_new='Holiday or weekend'
+
+day$workingday_new=factor(day$workingday_new)
+
+```
+
+#weathersit
+```{r}
+
+day['weathersit_new']=NA
+
+day[day$weathersit==1,]$weathersit_new='good'
+day[day$weathersit==2,]$weathersit_new='cloudy'
+day[day$weathersit==3,]$weathersit_new='wet'
+day$weathersit_new=factor(day$weathersit_new)
+
+day[day$weathersit==4,]$weathersit_new='bad'
+
+
+```
+
+#temp,atemp, hum, windspeed: Denormalizing the values using formula initialy used to normalise them.
+```{r}
+
+#- temp : Normalized temperature in Celsius. The values are derived via (t-t_min1)/(t_max1-t_min1), t_min1=-8, t_max1=+39 (only in hourly scale)
+
+#- atemp: Normalized feeling temperature in Celsius. The values are derived via (t-t_min)/(t_max2-t_min2), t_min2=-16, t_max2=+50 (only in hourly scale
+
+#- hum: Normalized humidity. The values are divided to 100 (max)
+
+#- windspeed: Normalized wind speed. The values are divided to 67 (max)
+
+
+t_max1=39
+t_min1=-8
+t_max2=50
+t_min2=-16
+  
+#temp   
+day['temp_new']=NA
+day['temp_new']=day$temp*(t_max1-t_min1)+t_min1                                                                                                        
+#atemp
+day['atemp_new']=NA
+day['atemp_new']=day$atemp*(t_max2-t_min2)+t_min2                                                                                                                                                                                                          
+#hum                                                                                                    
+day['hum_new']=NA
+day['hum_new']= day$hum*100
+                                                                                                    
+#windspeed
+day['windspeed_new']=NA
+day['windspeed_new']= day$windspeed*67
+                                                                                                    
+                                                                                                  
+```
+
+
+# Chaning some of the columns to factor variables since they are categorical
+
+
+```{r}
+
+day$season=factor(day$season)
+day$mnth=factor(day$mnth)
+day$yr=factor(day$yr)
+day$holiday=factor(day$holiday)
+day$weekday=factor(day$weekday)
+day$workingday=factor(day$workingday)
+day$weathersit=factor(day$weathersit)
+
+    
+```
+
+```{r}
+day$mnth_new <- factor(months(day$dteday)
+                      ,levels = c("January"
+                                  ,"February"
+                                  ,"March"
+                                  ,"April"
+                                  ,"May"
+                                  ,"June"
+                                  ,"July"
+                                  ,"August"
+                                  ,"September"
+                                  ,"October"
+                                  ,"November"
+                                  ,"December")
+                      ,ordered = TRUE)
+
+```
+
+
+# Changing dteday to a date column
+```{r}
+day=day %>%
+   mutate(dteday=as.Date(dteday, format = "%Y-%m-%d"))
+
+```
+
+# View the new structure and sample of the dataset
+```{r}
+str(day)
+
+head(day)
+```
+
+
+#====================================
+#2. EAD
+#=====================================
+
+
+
+
+# 2.1 Percentage of casual bikers on work days and non work days
+
+```{r}
+
+day['casualPro']=day$casual/day$cnt*100
+day['registeredPro']=100-day$casualPro
+
+ggplot() + geom_line(aes(y = casualPro, x = dteday, color=workingday_new),
+                           data = day)+
+    labs(x="Year", y="Casual riders total percentage(%)") +
+  ggtitle("Percentage of casual bikers on work days and non work days")+
+  
+  theme(axis.line = element_line(size=1, colour = "black"), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), panel.border = element_blank(),
+        panel.background = element_blank()
+        )
+```
+
+#2.2 What days of the week were most rides taken?
+
+```{r}
+# Plotting rental per weekday
+
+df2=day %>%
+  group_by(weekday) %>%
+  summarise(total=sum(cnt))
+
+
+df2.long<-melt(df2)
+ggplot(df2.long,aes(weekday,value,fill=weekday))+
+     geom_bar(stat="identity",position="dodge")+
+     labs(y = "Total rental count", title='Total rental count distribution over seasons')
+
+```
+
+#2.3 During what seasons were most rides taken
+```{r}
+# Plotting rental count per seasons
+df1=day %>%
+  group_by(season_new) %>%
+  summarise(total=sum(cnt))
+
+df1.long<-melt(df1)
+ggplot(df1.long,aes(season_new,value,fill=season_new))+
+     geom_bar(stat="identity",position="dodge")+
+     labs(y = "Total rental count", title='Total rental count per seasons')
+```
+
+
+
+#2.4 During what weather conditions  were less rides taken and what was the average count during the season
+```{r}
+
+df4=day %>%
+  group_by(weathersit_new) %>%
+  summarise(total=sum(cnt))
+
+df4.long<-melt(df4)
+ggplot(df4.long,aes(weathersit_new,value,fill=weathersit_new))+
+     geom_bar(stat="identity",position="dodge")+
+     labs(y = "Total rental count ", title='Total rental count distribution over weather conditions', x='Weather condition')
+
+
+
+
+
+ggplot(day, aes(x=weathersit_new,y=cnt, fill=yr_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='rental count distribution over weather conditions per year', x='Weather condition')
+```
+
+#2.4 During what weather month of the year was rental count the highest and lowest for both years?
+
+
+```{r}
+ggplot(day, aes(x=mnth_new,y=cnt, fill=yr_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='rental count distribution over months for 2 years', x='Weather condition')+
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+```
+
+```{r}
+
+
+```
+
