@@ -9,19 +9,46 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## Dataset Description
+#====================
+Dataset Description
+#====================
 
 The  dataset contains the hourly and daily count of rental bikes between years 2011 and 2012 in Capital bikeshare system with the corresponding weather and seasonal information. It was provided  on 2013-12-20 by Capital Bikeshare , a bicycle sharing system that serves Washington, D.C.
 
+================================================================================
+Attribute Information
+================================================================================
 
+Both hour.csv and day.csv have the following fields, except hr which is not available in day.csv
 
-## Questions to Explore
+- instant: record index
+- dteday : date
+- season : season (1:springer, 2:summer, 3:fall, 4:winter)
+- yr : year (0: 2011, 1:2012)
+- mnth : month ( 1 to 12)
+- hr : hour (0 to 23)
+- holiday : weather day is holiday or not (extracted from [Web Link])
+- weekday : day of the week
+- workingday : if day is neither weekend nor holiday is 1, otherwise is 0.
++ weathersit : 
+- 1: Clear, Few clouds, Partly cloudy, Partly cloudy
+- 2: Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist
+- 3: Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds
+- 4: Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog
+- temp : Normalized temperature in Celsius. The values are derived via (t-t_min)/(t_max-t_min), t_min=-8, t_max=+39 (only in hourly scale)
+- atemp: Normalized feeling temperature in Celsius. The values are derived via (t-t_min)/(t_max-t_min), t_min=-16, t_max=+50 (only in hourly scale)
+- hum: Normalized humidity. The values are divided to 100 (max)
+- windspeed: Normalized wind speed. The values are divided to 67 (max)
+- casual: count of casual users
+- registered: count of registered users
+- cnt: count of total rental bikes including both casual and registered
 
+===================================================================================
+Questions to Explore
+===================================================================================
 
-1. What hours of the day are most rides taken?
-2. What hours of the day are most less rides taken?
-3. What days of the week are most rides taken?
-4. What days of the week are less rides taken?
+1. What days of the week are most rides taken?
+
 5. What is the average time of duration of the trip?
 6. How does the weather affect the number of rides taken?
 7. what is the ratio of casual to registered riders?
@@ -39,25 +66,160 @@ Response variable : Rental Count(cnt)
 H0:Rental count will not decrease during cold weather
 
 HA:Rental count will decrease during cold weather
-```{r}
-# Column names
-colnames(df)
-```
+
 
 
 ```{r}
+# Setting global options
+options("scipen" = 10)
+options()$scipen
+
+# Loading libraries
+  #install.packages('dplyr')
+  library('dplyr')
+  library(reshape2)
+  library(ggplot2)
+
 # Importing the dataset and viewing structure
-df=read.csv(file="hour.csv", header=TRUE)
-str(df)
+day=read.csv(file="day.csv", header=TRUE)
+str(day)
 
 ```
 
 ```{r}
 # Getting some statistics on the data
-summary(df)
+summary(day)
 ```
 
 ```{r}
-#To be continued...
+# Columns names
+names(day)
 ```
+
+#====================================
+# EAD
+#=====================================
+
+```{r}
+#Check for null values
+is.null(day)
+```
+
+```{r}
+# Exploring categorical data
+
+#1. Reverting weather column to contain string values
+day[day$season==1,]$season='spring'
+day[day$season==2,]$season='summer'
+day[day$season==3,]$season='fall'
+day[day$season==4,]$season='winter'
+```
+
+```{r}
+#2. denormalizing some columns 
+day$hum=day$hum*100
+day$windspeed=day$windspeed*67
+head(day)
+
+```
+
+```{r}
+
+
+# Distribution of categorical variables
+
+# Plotting rental count distribution over seasons
+df1=day %>%
+  group_by(season) %>%
+  summarise(total=sum(cnt))
+
+df1.long<-melt(df1)
+ggplot(df1.long,aes(season,value,fill=season))+
+     geom_bar(stat="identity",position="dodge")+
+     labs(y = "Total rental count", title='Total rental count distribution over seasons')
+
+
+
+# Plotting rental count distribution over weekdays and weekends
+
+day[day$workingday==1,]$workingday='Work Day'
+day[day$workingday==0,]$workingday='Weekend'
+df2=day %>%
+  group_by(workingday) %>%
+  summarise(total=sum(cnt))
+
+
+df2.long<-melt(df2)
+ggplot(df2.long,aes(workingday,value,fill=workingday))+
+     geom_bar(stat="identity",position="dodge")+
+     labs(y = "Total rental count", title='Total rental count distribution over seasons')
+
+
+
+
+# Plotting rental count distribution over holidays and regular days
+
+day[day$holiday==0,]$holiday='Regular Day'
+day[day$holiday==1,]$holiday='Holiday'
+df3=day %>%
+  group_by(holiday) %>%
+  summarise(total=sum(cnt))
+
+
+df3.long<-melt(df3)
+ggplot(df3.long,aes(holiday,value,fill=holiday))+
+     geom_bar(stat="identity",position="dodge")+
+     labs(y = "Total rental count", title='Total rental count distribution over seasons')
+
+
+
+
+
+```
+
+```{r}
+
+# Plotting rental count distribution over the years
+
+day$weekday = factor(day$weekday)
+day[day$yr==0,]$yr='2011'
+day[day$yr==1,]$yr='2012'
+
+
+df5=day %>%
+  group_by( yr,weekday) %>%
+  summarise(total=sum(cnt))
+
+
+df5.long<-melt(df5)
+ggplot(df5.long,aes(yr,value,fill=weekday))+
+     geom_bar(stat="identity",position="dodge")+
+     labs(y = "Total rental count ", title='Total rental count distribution over the years', x='1=Monday
+ 2=Tuesday  3= Wednesday  4=Thursday 5=Friday 6= Saturday 7=Sunday')
+df5
+
+
+# Plotting rental count distribution over weather conditions
+day$weathersit <- factor(day$weathersit)
+
+df4=day %>%
+  group_by(weathersit) %>%
+  summarise(total=sum(cnt))
+
+
+df4.long<-melt(df4)
+ggplot(df4.long,aes(weathersit,value,fill=weathersit))+
+     geom_bar(stat="identity",position="dodge")+
+     labs(y = "Total rental count ", title='Total rental count distribution over weather conditions', x='1=Clear,Few clouds
+ 2=  Cloudy   3= Light Snow or Rain 4=  Heavy Rain or snow')
+```
+
+```{r}
+day['prop']=na
+
+```
+
+
+
+
 
