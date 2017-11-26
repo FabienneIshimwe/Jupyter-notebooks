@@ -75,7 +75,7 @@ options("scipen" = 10)
 options()$scipen
 
 # Loading libraries
-install.packages('dplyr')
+#install.packages('dplyr')
 library('dplyr')
 library(reshape2)
 library(ggplot2)
@@ -100,7 +100,31 @@ str(day)
 ```{r}
 is.null(day)
 ```
+
+
+# Checking for outliers
+```{r}
+install.packages('DMwR')
+library(DMwR)
+outliers=lofactor(day[,c(10:16)], k=5)
+outliers=order(outliers, decreasing=T)[1:5]
+
+n = nrow(day)
+ pch = rep(".",n)
+ pch[outliers] = "+"
+col = rep("black", n)
+col[outliers] = "red"
+pairs(day[,c(10:16)], pch=pch, col=col)
+ 
+```
+
+
+
+
 #1.2 Adding new columns to facilitate analysis and the creation of better model
+```{r}
+
+```
 
 #Season
 ```{r}
@@ -241,8 +265,25 @@ head(day)
 #====================================
 #2. EAD
 #=====================================
+```{r}
+str(day)
+```
 
 
+# correlation between numerical variabels
+
+```{r}
+library(ggplot2)
+library(RColorBrewer)
+library(reshape2)
+hm.palette <- colorRampPalette(rev(brewer.pal(11, 'BrBG')), space='Lab')
+
+dayCor <- cor(day[, c(10:16)], use="complete.obs")
+dayCorMelt <- reshape2::melt(dayCor, varnames=c("x", "y"), value.name="Correlation")
+dayCorMelt <- dayCorMelt[order(dayCorMelt$Correlation),]
+ggplot(dayCorMelt, aes(x,y, fill = Correlation)) + geom_tile()+
+  scale_fill_gradientn(colours = hm.palette(100))
+```
 
 
 # 2.1 Percentage of casual bikers on work days and non work days
@@ -316,18 +357,189 @@ ggplot(day, aes(x=weathersit_new,y=cnt, fill=yr_new))+
      labs(y = "Total rental count ", title='rental count distribution over weather conditions per year', x='Weather condition')
 ```
 
-#2.4 During what weather month of the year was rental count the highest and lowest for both years?
+#2.5 During what month of the year was rental count the highest and lowest for both years?
 
 
 ```{r}
-ggplot(day, aes(x=mnth_new,y=cnt, fill=yr_new))+
+ggplot(day, aes(x=mnth,y=cnt, fill=yr_new))+
     geom_boxplot()+
      labs(y = "Total rental count ", title='rental count distribution over months for 2 years', x='Weather condition')+
   theme(axis.text.x = element_text(angle = 40, hjust = 1))
 ```
 
+
+
+
+
+
+#2.5. Is there a corellation between non work day and total rental bikes
+```{r}
+library(stats) 
+ggplot(day, aes(y=cnt, x=workingday_new, fill=workingday_new))+
+        geom_violin(colour="black", size=1)+
+        xlab("Day Type") + ylab("Rental Count")+
+        geom_boxplot(width=.1)
+
+
+```
+# There deosn't seem to be a huge difference in rental count for work days and non work days but let's test that with more statistics and fit a linear regression
+
+```{r}
+test <- t.test(cnt ~ workingday, data= day, var.equal = FALSE, paired=FALSE ,conf.level = .95)
+result <- data.frame( "t-statistic"  = test$statistic, 
+                       "df" = test$parameter,
+                        "p-value"  = test$p.value,
+                        "lower CL" = test$conf.int[1],
+                        "upper CL" = test$conf.int[2],
+                        "Holiday or weekend mean" = test$estimate[1],
+                        "working day mean" = test$estimate[2],
+                        row.names = "")
+
+result
+
+# With a p_value of 0.11, we can confirm that there in no significan't difference in the rental for a non working  day and a working day.
+
+summary(lm(cnt ~ workingday, data = day))
+
+```
+# Relationship count and weather sit
+```{r}
+ggplot(day, aes(y=cnt, x=weathersit_new, fill=weathersit_new))+
+        geom_violin(colour="black", size=1, trim=FALSE)+
+        xlab("Day Type") + ylab("Rental Count")+
+        geom_boxplot(width=.1)
+
+
+summary(lm(cnt ~ weathersit, data = day))
+```
+
+
+
+# Relationship count and season 
+```{r}
+ggplot(day, aes(y=cnt, x=season_new, fill=season_new))+
+        geom_violin(colour="black", size=1, trim=FALSE)+
+        xlab("season") + ylab("Rental Count")+
+        geom_boxplot(width=.1)
+
+
+summary(lm(cnt ~ season, data = day))
+
+
+
+```
+# Relationship with temperature and seasons
+
+
 ```{r}
 
+ggplot(day, aes(x=temp, y=cnt, colour=season_new)) +
+    geom_point(shape=1) +    # Use hollow circles
+    geom_smooth(method=lm)   # Add linear regression line 
+                            
+
+summary(lm(cnt ~ temp, data = day))
+
+
+ggplot(day, aes(x=atemp, y=cnt, colour=season_new)) +
+    geom_point(shape=1) +    # Use hollow circles
+    geom_smooth(method=lm)   # Add linear regression line 
+                            
+
+summary(lm(cnt ~ atemp, data = day))
+
+
+
+
+```
+# Creating the best fit model
+
+```{r}
+
+# splitting data into train and test
+
+data(day)
+
+## 75% of the sample size
+smp_size =floor(0.75 * nrow(day))
+
+## set the seed to make your partition reproductible
+set.seed(123)
+train_ind =sample(seq_len(nrow(day)), size = smp_size)
+
+train= day[train_ind, ]
+test =day[-train_ind, ]
+
+
+
+# All predictors included
+model <- lm(cnt ~., data =train)
+summary(model)
+
+
+```
+
+# removing variables that with p-values equal to NA 
+```{r}
+
+
+# All predictors included except dteday and yr
+model <- lm(cnt~+season+mnth+holiday+weekday+workingday+weathersit+temp+atemp+hum+windspeed,data=train)
+summary(model)
+```
+
+```{r}
+#removing the ones with p-values less >0.005
+
+#1. remove mnth
+model <- lm(cnt~+season+holiday+weekday+workingday+weathersit+temp+atemp+hum+windspeed,data=train)
+summary(model)
+
+
+#2. remove workingday
+model <- lm(cnt~+season+holiday+weekday+weathersit+temp+atemp+hum+windspeed,data=train)
+summary(model)
+
+
+#3. remove atemp
+model <- lm(cnt~+season+holiday+weekday+weathersit+temp+hum+windspeed,data=train)
+summary(model)
+
+#4. remove weekday
+model <- lm(cnt~+season+holiday+weathersit+temp+hum+windspeed,data=train)
+summary(model)
+
+#4. remove weathersit
+model <- lm(cnt~+season+holiday+temp+hum+windspeed,data=train)
+summary(model)
+
+#5. remove season
+model <- lm(cnt~+holiday+temp+hum+windspeed,data=train)
+summary(model)
+
+#5. remove holiday
+modelfinal <- lm(cnt~+temp+hum+windspeed,data=train)
+summary(modelfinal)
+
+
+```
+# predicting
+
+```{r}
+p=predict(model3, test[1:5,])
+p
+
+head(test)
+
+
+```
+```{r}
+newdatacor = cor(day[2:13])
+corrplot(newdatacor, method = "number")
+```
+
+```{r}
+cor(day[3:13])
 
 ```
 
