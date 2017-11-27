@@ -1,0 +1,627 @@
+---
+title: "Analyzing Bike sharing dataset by Team6"
+author: "Fabienne ISHIMWE"
+date: "November 27, 2017"
+output: word_document
+---
+
+
+```{r setup, include=FALSE}
+chooseCRANmirror(graphics=FALSE, ind=1)
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+====================
+Dataset Description
+====================
+
+The  dataset contains the hourly and daily count of rental bikes between years 2011 and 2012 in Capital bikeshare system with the corresponding weather and seasonal information. It was provided  on 2013-12-20 by Capital Bikeshare , a bicycle sharing system that serves Washington, D.C.
+
+================================================================================
+Attribute Information
+================================================================================
+
+Both hour.csv and day.csv have the following fields, except hr which is not available in day.csv
+
+- instant: record index
+- dteday : date
+- season : season (1:springer, 2:summer, 3:fall, 4:winter)
+- yr : year (0: 2011, 1:2012)
+- mnth : month ( 1 to 12)
+- holiday : weather day is holiday or not (extracted from [Web Link])
+- weekday : day of the week
+- workingday : if day is neither weekend nor holiday is 1, otherwise is 0.
++ weathersit : 
+- 1: Clear, Few clouds, Partly cloudy, Partly cloudy
+- 2: Mist + Cloudy, Mist + Broken clouds, Mist + Few clouds, Mist
+- 3: Light Snow, Light Rain + Thunderstorm + Scattered clouds, Light Rain + Scattered clouds
+- 4: Heavy Rain + Ice Pallets + Thunderstorm + Mist, Snow + Fog
+- temp : Normalized temperature in Celsius. The values are derived via (t-t_min)/(t_max-t_min), t_min=-8, t_max=+39 (only in hourly scale)
+- atemp: Normalized feeling temperature in Celsius. The values are derived via (t-t_min)/(t_max-t_min), t_min=-16, t_max=+50 (only in hourly scale)
+- hum: Normalized humidity. The values are divided to 100 (max)
+- windspeed: Normalized wind speed. The values are divided to 67 (max)
+- casual: count of casual users
+- registered: count of registered users
+- cnt: count of total rental bikes including both casual and registered
+
+===================================================================================
+                                I.EDA 
+===================================================================================
+
+1. Correlation between numerical variables
+2. Distribution of the response variable (cnt),redistered and cusual over days
+3. Disitribution of numerical explanatory variables over days
+4. Disitribution of categorical explanatory variables over days
+5. Percentage of registered bikers on work days and non work days for the 2 years
+
+
+
+
+====================================================================
+                          II. Research question/Hypothesis testing
+======================================================================
+
+Response variable : Rental Count(cnt)
+
+H0:There is no significance difference between rental count on a weekday and non weekday
+HA:There is a significance difference between rental count on a weekday and non weekday
+
+
+
+
+
+
+
+Intsalling  and loading packages
+=============================================
+```{r}
+# Setting global options
+options("scipen" = 10)
+options()$scipen
+
+# Loading libraries
+install.packages("tidyverse")
+install.packages('DMwR')
+
+
+
+
+
+```
+
+```{r}
+install.packages('reshape')
+
+```
+
+```{r}
+install.packages('corrplot')
+install.packages('data.table')
+```
+```{r}
+install.packages('ggplot2')
+library(dplyr)
+library(DMwR)
+```
+
+```{r}
+
+library(reshape)
+#library(data.table)
+library(ggplot2)
+library(RColorBrewer)
+library(corrplot)
+```
+
+
+Importing the dataset and viewing structure
+=================================================
+```{r}
+
+day=read.csv("day.csv")
+
+str(day)
+```
+
+
+Data preprocessing
+============================================
+
+#Checking for null values
+
+```{r}
+is.null(day)
+```
+
+
+
+#Adding new columns to facilitate analysis and the creation of the best fit model
+
+#Season
+```{r}
+
+day['season_new']=NA
+
+day[day$season==1,]$season_new='spring'
+day[day$season==2,]$season_new='summer'
+day[day$season==3,]$season_new='fall'
+day[day$season==4,]$season_new='winter'
+
+day$season_new=factor(day$season_new)
+
+```
+
+#yr: year
+```{r}
+
+day['yr_new']=NA
+
+day[day$yr==1,]$yr_new='2012'
+day[day$yr==0,]$yr_new='2011'
+
+day$yr_new=factor(day$yr_new)
+```
+
+
+#yr: weekday
+```{r}
+day['weekday_new']=NA
+day[day$weekday==0,]$weekday_new='Sunday'
+day[day$weekday==1,]$weekday_new='Monday'
+day[day$weekday==2,]$weekday_new='Tuesday'
+day[day$weekday==3,]$weekday_new='Wednesday'
+day[day$weekday==4,]$weekday_new='Thursday'
+day[day$weekday==5,]$weekday_new='Friday'
+day[day$weekday==6,]$weekday_new='Saturday'
+day$weekday_new=factor(day$weekday_new)
+
+```
+
+#workingday
+```{r}
+day['workingday_new']=NA
+
+day[day$workingday==1,]$workingday_new='Regular Day'
+day[day$workingday==0,]$workingday_new='Holiday or weekend'
+
+day$workingday_new=factor(day$workingday_new)
+
+```
+
+#weathersit
+```{r}
+
+day['weathersit_new']=NA
+
+day[day$weathersit==1,]$weathersit_new='good'
+day[day$weathersit==2,]$weathersit_new='cloudy'
+day[day$weathersit==3,]$weathersit_new='wet'
+day$weathersit_new=factor(day$weathersit_new)
+
+#day[day$weathersit==4,]$weathersit_new='bad'
+
+
+```
+
+#temp,atemp, hum, windspeed: Denormalizing the values using formula initialy used to normalise them.
+```{r}
+
+#- temp : Normalized temperature in Celsius. The values are derived via (t-t_min1)/(t_max1-t_min1), t_min1=-8, t_max1=+39 (only in hourly scale)
+
+#- atemp: Normalized feeling temperature in Celsius. The values are derived via (t-t_min)/(t_max2-t_min2), t_min2=-16, t_max2=+50 (only in hourly scale
+
+#- hum: Normalized humidity. The values are divided to 100 (max)
+
+#- windspeed: Normalized wind speed. The values are divided to 67 (max)
+
+
+t_max1=39
+t_min1=-8
+t_max2=50
+t_min2=-16
+  
+#temp   
+day['temp_new']=NA
+day['temp_new']=day$temp*(t_max1-t_min1)+t_min1                                                                                                        
+#atemp
+day['atemp_new']=NA
+day['atemp_new']=day$atemp*(t_max2-t_min2)+t_min2                                                                                                                                                                                                          
+#hum                                                                                                    
+day['hum_new']=NA
+day['hum_new']= day$hum*100
+                                                                                                    
+#windspeed
+day['windspeed_new']=NA
+day['windspeed_new']= day$windspeed*67
+                                                                                                    
+                                                                                                  
+```
+
+
+# Chaning some of the columns to factor variables since they are categorical
+
+
+```{r}
+
+day$season=factor(day$season)
+day$mnth=factor(day$mnth)
+day$yr=factor(day$yr)
+day$holiday=factor(day$holiday)
+day$weekday=factor(day$weekday)
+day$workingday=factor(day$workingday)
+day$weathersit=factor(day$weathersit)
+
+    
+```
+
+# Changing dteday to a date column
+```{r}
+day=day %>%
+   mutate(dteday=as.Date(dteday, format = "%Y-%m-%d"))
+```
+
+```{r}
+day$mnth_new <- factor(months(day$dteday)
+                      ,levels = c("January"
+                                  ,"February"
+                                  ,"March"
+                                  ,"April"
+                                  ,"May"
+                                  ,"June"
+                                  ,"July"
+                                  ,"August"
+                                  ,"September"
+                                  ,"October"
+                                  ,"November"
+                                  ,"December")
+                      ,ordered = TRUE)
+
+
+
+```
+
+
+
+# View the new structure and sample of the dataset
+```{r}
+str(day)
+
+head(day)
+```
+
+
+#====================================
+#          I. EDA       
+#=====================================
+
+
+# 1. correlation between numerical variabels
+
+
+```{r}
+M=cor(day[, c(10:16)])
+
+corrplot(M, method = "number") 
+
+corrplot(M, method = "circle") 
+```
+
+
+#2.  Distribution of the response variable (cnt), redistered and cusual variables over days
+```{r}
+
+# cnt
+ggplot(day, aes(cnt) )+
+  geom_histogram(bins  = 80, fill='tan4', color='yellowgreen')+
+geom_vline(aes(xintercept=mean(cnt, na.rm=T)),   # Ignore NA values for mean
+               color="red", linetype="dashed", size=2)
+# casual
+ggplot(day, aes(casual))+
+  geom_histogram(bins  = 80, fill='tan2', color='yellowgreen')+
+geom_vline(aes(xintercept=mean(casual, na.rm=T)),   # Ignore NA values for mean
+               color="red", linetype="dashed", size=2)
+# registered
+ggplot(day, aes(registered) )+
+  geom_histogram(bins  = 80, fill='wheat4', color='yellowgreen')+
+geom_vline(aes(xintercept=mean(registered, na.rm=T)),   # Ignore NA values for mean
+               color="red", linetype="dashed", size=2)
+mean(day$casual)
+
+```
+
+
+# 3. Distribution of numerical explanatory variables over days
+```{r}
+
+#Actual Temperature
+ggplot(day, aes(temp_new)) +
+  geom_histogram(bins  = 80, fill='turquoise4', color='skyblue')+
+geom_vline(aes(xintercept=mean(temp_new, na.rm=T)),   # Ignore NA values for mean
+               color="red", linetype="dashed", size=2)+
+  labs( x='Actual Temperature',title='Actual Temperature Dististribution over days')
+
+
+# Apparent temperature
+ggplot(day, aes(atemp_new) )+
+  geom_histogram(bins  = 80, fill='tan4', color='skyblue')+
+geom_vline(aes(xintercept=mean(atemp_new, na.rm=T)),   # Ignore NA values for mean
+               color="red", linetype="dashed", size=2)+
+labs( x='Apparent Temperature',title='Apparent Temperature Dististribution over days')
+
+# Humidity
+ggplot(day, aes(hum_new) )+
+  geom_histogram(bins  = 80, fill='tan2', color='yellowgreen')+
+geom_vline(aes(xintercept=mean(hum_new, na.rm=T)),   # Ignore NA values for mean
+               color="red", linetype="dashed", size=2)+
+  labs(x='Humidity',title='Humidity Dsitribution over days')
+
+# windispeed
+ggplot(day, aes(windspeed_new) )+
+  geom_histogram(bins  = 80, fill='darkorchid4', color='yellowgreen')+
+geom_vline(aes(xintercept=mean(windspeed_new, na.rm=T)),   # Ignore NA values for mean
+               color="red", linetype="dashed", size=2)+
+  labs( x='Windspeed',title='Windspeed Distribution over days')
+
+```
+
+
+#4. disitribution of categorical explanatory variables
+
+```{r}
+# year Total count
+ggplot(day, aes(x=yr_new,y=cnt, fill=yr_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='rental count distribution over  2 years', x='year')+
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+
+# year casual count
+ggplot(day, aes(x=yr_new,y=casual, fill=yr_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='casual count distribution over  2 years', x='year')+
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))+
+    coord_cartesian(ylim = c(0, 10000))
+
+
+# weekday total count
+
+ggplot(day, aes(x=weekday_new,y=cnt, fill=weekday_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='rental count distribution vs weekday', x='Weekday')+
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+
+# weekday casual count
+
+ggplot(day, aes(x=weekday_new,y=casual, fill=weekday_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='casual count distribution vs weekday', x='Weekday')+
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))+
+    coord_cartesian(ylim = c(0, 10000))
+
+
+#  seasons total count
+ggplot(day, aes(x=season_new,y=cnt, fill=workingday_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='rental count distribution vs season', x='Season')+
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+
+#  seasons casual count
+ggplot(day, aes(x=season_new,y=casual, fill=workingday_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='casual count distribution vs season', x='Season')+
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))+
+    coord_cartesian(ylim = c(0, 10000))
+
+
+# weathersit total count
+ggplot(day, aes(x=weathersit_new,y=cnt, fill=workingday_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='rental count distribution vs weather condition', x='Weather condition')+
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+
+# weathersit casual count
+ggplot(day, aes(x=weathersit_new,y=casual, fill=workingday_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='casual count distribution vs weather condition', x='Weather condition')+
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))+
+    coord_cartesian(ylim = c(0, 10000))
+
+
+# month total count
+ggplot(day, aes(x=mnth_new,y=cnt, fill=yr_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='rental count distribution over months', x='month')+
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))
+
+# month casual count
+ggplot(day, aes(x=mnth_new,y=casual, fill=yr_new))+
+    geom_boxplot()+
+     labs(y = "Total rental count ", title='casual count distribution over months', x='month')+
+  theme(axis.text.x = element_text(angle = 40, hjust = 1))+
+  coord_cartesian(ylim = c(0, 10000))
+
+
+```
+
+
+#5. Percentage of registered bikers on work days and non work days for the 2 years
+
+```{r}
+
+day['casualPro']=day$casual/day$cnt*100
+day['registeredPro']=100-day$casualPro
+
+ggplot() + geom_line(aes(y = registeredPro, x = dteday, color=workingday_new),
+                           data = day)+
+    labs(x="Year", y="Registred riders total percentage(%)") +
+  ggtitle("Percentage of registered bikers on work days and non work days")+
+  
+  theme(axis.line = element_line(size=1, colour = "black"), panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(), panel.border = element_blank(),
+        panel.background = element_blank()
+        )
+```
+
+
+
+
+
+
+
+====================================================================
+                          II. Research question/Hypothesis testing
+======================================================================
+
+H0:There is no significance difference in the mean total rental count(cnt) on a weekday and non weekday
+HA:There is a significance difference in the mean total rental(cnt) count on a weekday and non weekday
+
+
+```{r}
+
+source("http://stat.duke.edu/courses/Spring12/sta101.1/labs/inference.R")
+
+c('Means :',by(day$cnt, day$workingday_new, mean))
+
+
+c(' Standard deviations:',by(day$cnt, day$workingday_new, sd))
+
+cat('\n\n')
+inference(day$cnt,day$workingday_new, est = "mean", type = "ht", null = 0, alternative = "twosided",method = "theoretical")
+```
+
+
+
+=========================================================================
+
+                           III. Developping regression models
+===========================================================================
+
+
+#1.simple linear regression
+```{r}
+ggplot(day, aes(x=temp_new, y=cnt)) +
+    geom_point(shape=1) +   
+    geom_smooth(method=lm)  
+
+
+ggplot(day, aes(x=atemp_new, y=cnt)) +
+    geom_point(shape=1) +    
+    geom_smooth(method=lm)   
+
+
+
+
+ggplot(day, aes(x=hum_new, y=cnt)) +
+    geom_point(shape=1) +    
+    geom_smooth(method=lm)   
+
+
+
+
+ggplot(day, aes(x=windspeed_new, y=cnt)) +
+    geom_point(shape=1) +    
+    geom_smooth(method=lm)   
+
+lm1=lm(cnt ~ atemp_new, data = day)
+lm2=lm(cnt ~ hum_new, data = day)
+lm3=lm(cnt ~ temp_new, data = day)
+lm4=lm(cnt ~ windspeed_new, data = day)
+
+```
+
+#2. simple linear regression model evaluation
+```{r}
+
+plot(lm1, col = "green")
+
+plot(lm2, col = "blue")
+
+plot(lm3, col = "yellow")
+
+plot(lm4, col = "brown")
+```
+
+
+
+
+
+# 3.Multilinear regression model
+
+# splitting the data into train and test
+
+```{r}
+
+# splitting data into train and test
+
+## 75% of the sample size
+smp_size =floor(0.75 * nrow(day))
+
+set.seed(123)
+train_ind =sample(seq_len(nrow(day)), size = smp_size)
+
+train= day[train_ind, ]
+test =day[-train_ind, ]
+
+```
+
+# model with all variables included
+```{r}
+
+
+# All predictors included except dteday and yr
+model <- lm(cnt~+season+mnth+holiday+weekday+workingday+weathersit+temp_new+atemp_new+hum_new+windspeed_new,data=train)
+summary(model)
+```
+
+# removing variables that with p-values >0.005
+```{r}
+#removing the ones with p-values less >0.005
+
+#1. remove mnth
+model <- lm(cnt~+season+holiday+weekday+workingday+weathersit+temp_new+atemp_new+hum_new+windspeed_new,data=train)
+summary(model)
+
+
+#2. remove weekday
+model <- lm(cnt~+season+holiday+workingday+weathersit+temp_new+atemp_new+hum_new+windspeed_new,data=train)
+summary(model)
+
+#3. remove temp_new
+model <- lm(cnt~+season+holiday+workingday+weathersit+atemp_new+hum_new+windspeed_new,data=train)
+summary(model)
+
+#3. remove workingday
+model <- lm(cnt~+season+holiday+weathersit+atemp_new+hum_new+windspeed_new,data=train)
+summary(model)
+
+
+#3. remove holiday and weathersit and windspeed( windspeed is highly correlated with humidity and temperature)
+model <- lm(cnt~season+temp_new+hum_new,data=train)
+summary(model)
+
+
+```
+
+
+
+
+# predicting
+
+```{r}
+p=predict(model, test, interval="prediction", level=0.90)
+predictions=data.frame(Actual_Rental_Count = test$cnt, Predicted_Rental_Count = p)
+predictions['diff']=predictions$Actual_Rental_Count-predictions$Predicted_Rental_Count.fit
+predictions[order(predictions$diff),]
+```
+
+
+
+
+```{r}
+
+# Model evaluation
+summary(model)
+
+plot(model, col='green')
+
+```
+
